@@ -135,6 +135,17 @@
   .shake { animation: shake .12s 3; }
   @keyframes shake { 33% { transform: translateX(-6px); } 66% { transform: translateX(6px); } }
 
+  /* Publiczne pokoje i ustawienia */
+  .rooms span, .settings legend { color: var(--dim); font-size: 15px; }
+  .rooms ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 0; padding: 0; list-style: none; }
+  .rooms button, .settings label.pack { border: 2px solid var(--rim); background: var(--top); border-radius: 999px; padding: 6px 14px; cursor: pointer; font-weight: 600; font-size: 15px; }
+  .settings { width: min(100%, 560px); text-align: left; border: 2px solid var(--rim); border-radius: 22px; padding: 14px 18px; margin: 0; display: grid; gap: 12px; }
+  .settings .row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  .settings input[type=number] { width: 64px; padding: 6px 8px; border-radius: 10px; border: 2px solid var(--rim); background: var(--top); font-weight: 600; }
+  .settings label.pack { display: inline-flex; gap: 6px; align-items: center; padding: 4px 12px; }
+  .settings label.pack:has(input:checked) { border-color: var(--mint); color: var(--mint); }
+  .settings:disabled label.pack { cursor: default; }
+
   dialog { background: var(--top); color: var(--chalk); border: 0; border-radius: 22px; padding: 24px; max-width: min(420px, calc(100vw - 32px)); }
   dialog::backdrop { background: rgba(20, 12, 70, .7); }
   dialog h2 { margin: 0 0 8px; font-size: 28px; letter-spacing: -0.02em; }
@@ -171,6 +182,7 @@
       <button id="joinBtn" class="btn">Usiądź przy stole</button>
       <p class="err" id="joinErr" role="status"></p>
     </div>
+    <div class="rooms hidden" id="publicRooms"><span>Publiczne pokoje – kliknij, żeby wpisać kod</span><ul id="roomList"></ul></div>
     <button class="ghost" id="howBtn" style="justify-self:start">Jak się gra?</button>
   </section>
 
@@ -187,6 +199,15 @@
       </div>
       <div class="sub" id="sub"></div>
       <button class="btn hidden" id="startBtn">Zacznij grę</button>
+      <fieldset class="settings hidden" id="settings">
+        <legend>Ustawienia pokoju</legend>
+        <div class="row">
+          <label>Lont od <input type="number" id="fuseMin" min="5" max="60"> do <input type="number" id="fuseMax" min="5" max="60"> s</label>
+          <label>Serca <input type="number" id="hearts" min="1" max="5"></label>
+          <label><input type="checkbox" id="public"> Pokój publiczny</label>
+        </div>
+        <div class="row" id="packs" aria-label="Paczki pytań"></div>
+      </fieldset>
     </div>
     <div class="table" id="table">
       <div class="spud live hidden" id="potato" aria-hidden="true"><i></i></div>
@@ -212,7 +233,8 @@
     <h2>Jak się gra?</h2>
     <ul>
       <li>Każda runda to pytanie, np. „Podaj nazwę owocu”. Kto trzyma ziemniaka, podaje pasującą odpowiedź.</li>
-      <li>Dobra odpowiedź przekazuje ziemniaka dalej. Nikt nie wie, kiedy wybuchnie.</li>
+      <li>Dobra odpowiedź przekazuje ziemniaka dalej. Nikt nie wie, kiedy wybuchnie, ale po podaniu następna osoba ma zawsze co najmniej 8 sekund.</li>
+      <li>Drobne literówki i popularne warianty nazw są uznawane.</li>
       <li>Wybuch w twoich rękach zabiera serce.</li>
       <li>Rzadkie odpowiedzi napełniają zielony pasek. Pełny pasek daje dodatkowe serce.</li>
       <li>W jednej rundzie odpowiedzi nie mogą się powtarzać. Wygrywa ostatnia osoba z sercem.</li>
@@ -220,58 +242,61 @@
     <form method="dialog"><button class="btn">Rozumiem</button></form>
   </dialog>
 </main>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" integrity="sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR" crossorigin="anonymous"></script>
-<script src="game.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const PREFIX = 'goracy-ziemniak-pl-';
 const cleanCode = s => String(s).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
 const fromUrl = new URLSearchParams(location.search).get('pokoj');
 $('code').value = fromUrl ? cleanCode(fromUrl) : Math.random().toString(36).slice(2, 6).toUpperCase();
 try { $('name').value = localStorage.getItem('imie') || ''; } catch {}
 $('howBtn').onclick = () => $('how').showModal();
 
-let link, me, peer;  // link.send(string) – do gospodarza (lub lokalnie, jeśli to my)
+let link, me;  // link = WebSocket do serwera
 function handle(m) {
-  if (m.t === 'err') { $('joinErr').textContent = m.msg; peer && peer.destroy(); return; }
+  if (m.t === 'err') { $('joinErr').textContent = m.msg; link && link.close(); return; }
   if (m.t === 'bad') { $('ansErr').textContent = WHY[m.why] || m.why; $('answer').classList.add('shake'); setTimeout(() => $('answer').classList.remove('shake'), 400); return; }
   if (m.t === 'state') render(m);
 }
 const WHY = { 'pusto': 'Wpisz odpowiedź.', 'już było': 'Ta odpowiedź już padła. Spróbuj innej.', 'nie pasuje': 'Tego nie ma na liście. Spróbuj innej.' };
-function lost(msg) { $('joinErr').textContent = msg; show(false); me = null; peer && peer.destroy(); }
+function lost(msg) { $('joinErr').textContent = msg; show(false); me = null; link && link.close(); }
 
-async function connect() {
+function connect() {
   const code = cleanCode($('code').value), name = $('name').value.trim();
   if (!code || !name) return $('joinErr').textContent = 'Wpisz kod pokoju i imię.';
   $('joinErr').textContent = 'Łączę z pokojem…';
-  // Kto pierwszy zajmie ID pokoju, zostaje gospodarzem; reszta łączy się z nim.
-  peer = new Peer(PREFIX + code);
-  peer.on('open', async () => {
-    const cats = Game.loadCats(await (await fetch('kategorie.json')).json());
-    const room = Game.createRoom(code, cats);
-    const self = { send: s => handle(JSON.parse(s)) };
-    link = { send: s => room.onMsg(self, JSON.parse(s)) };
-    peer.on('connection', c => {
-      c.on('data', d => { try { room.onMsg(c, JSON.parse(d)); } catch (e) { console.error(e); } });
-      c.on('close', () => room.onClose(c));
-    });
-    $('joinErr').textContent = '';
-    link.send(JSON.stringify({ t: 'join', name }));
-  });
-  peer.on('error', e => {
-    if (e.type !== 'unavailable-id') return lost('Nie udało się połączyć (' + e.type + '). Odśwież stronę i spróbuj ponownie.');
-    peer.destroy();
-    peer = new Peer();
-    peer.on('error', e2 => lost('Nie udało się połączyć (' + e2.type + '). Odśwież stronę i spróbuj ponownie.'));
-    peer.on('open', () => {
-      const c = peer.connect(PREFIX + code, { reliable: true });
-      c.on('open', () => { $('joinErr').textContent = ''; link = c; c.send(JSON.stringify({ t: 'join', name })); });
-      c.on('data', d => handle(JSON.parse(d)));
-      c.on('close', () => { if (me) lost('Gospodarz opuścił pokój. Załóż nowy, żeby grać dalej.'); });
-    });
-  });
+  link && link.close();
+  const ws = link = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+  ws.onopen = () => { $('joinErr').textContent = ''; ws.send(JSON.stringify({ t: 'join', code, name })); };
+  ws.onmessage = e => handle(JSON.parse(e.data));
+  ws.onerror = () => { if (link === ws) lost('Nie udało się połączyć z serwerem. Spróbuj ponownie.'); };
+  ws.onclose = () => { if (link === ws && me) lost('Połączenie z serwerem zerwane. Dołącz ponownie.'); };
 }
 function show(inRoom) { $('join').classList.toggle('hidden', inRoom); $('room').classList.toggle('hidden', !inRoom); if (!inRoom) $('answerBox').classList.add('hidden'); }
+
+// Publiczne pokoje na ekranie wejścia
+async function loadRooms() {
+  if (me) return;
+  try {
+    const list = await (await fetch('/rooms')).json();
+    $('publicRooms').classList.toggle('hidden', !list.length);
+    $('roomList').innerHTML = list.map(r => `<li><button data-code="${esc(cleanCode(r.code))}">${esc(cleanCode(r.code))} · ${Number(r.players) | 0}/8${r.state === 'game' ? ' · w grze' : ''}</button></li>`).join('');
+  } catch {}
+}
+$('roomList').onclick = e => { const c = e.target.closest('button')?.dataset.code; if (c) { $('code').value = c; $('name').focus(); } };
+loadRooms(); setInterval(loadRooms, 5000);
+
+// Ustawienia: gospodarz zmienia, reszta widzi
+$('settings').onchange = () => link.send(JSON.stringify({
+  t: 'settings', fuseMin: $('fuseMin').value, fuseMax: $('fuseMax').value, hearts: $('hearts').value, public: $('public').checked,
+  packs: [...$('packs').querySelectorAll('input:checked')].map(i => i.value),
+}));
+function renderSettings(s, host) {
+  const f = $('settings');
+  f.disabled = !host;
+  if (f.contains(document.activeElement) && document.activeElement.type === 'number') return; // nie nadpisuj w trakcie pisania
+  const st = s.settings;
+  $('fuseMin').value = st.fuseMin; $('fuseMax').value = st.fuseMax; $('hearts').value = st.hearts; $('public').checked = st.public;
+  $('packs').innerHTML = s.packs.map(p => `<label class="pack"><input type="checkbox" value="${esc(p.name)}" ${st.packs.includes(p.name) ? 'checked' : ''}> ${esc(p.name)} <small>${Number(p.n) | 0}</small></label>`).join('');
+}
 
 $('joinBtn').onclick = () => {
   try { localStorage.setItem('imie', $('name').value); } catch {}
@@ -311,6 +336,8 @@ function render(s) {
   $('startBtn').classList.toggle('hidden', game || !host);
   $('startBtn').disabled = s.players.length < 2;
   $('startBtn').textContent = s.winner ? 'Zagraj jeszcze raz' : 'Zacznij grę';
+  $('settings').classList.toggle('hidden', game);
+  if (!game) renderSettings(s, host);
 
   // Miejsca wokół stołu; ty zawsze siedzisz na dole.
   const n = s.players.length, mine = s.players.findIndex(p => p.id === me);
@@ -327,7 +354,7 @@ function render(s) {
       <div class="stool"></div>
       <div class="name">${esc(p.name)}${p.host ? ' <span title="Gospodarz">★</span>' : ''}</div>
       ${p.id === me ? '<div class="you">to ty</div>' : ''}
-      ${game ? `<div class="hearts" aria-label="Serca: ${hearts}">${'♥'.repeat(Math.min(hearts, 9)) || 'odpada'}</div>
+      ${game ? `<div class="hearts" aria-label="Serca: ${hearts}">${'♥'.repeat(Math.min(hearts, 9)) || (p.waiting ? 'czeka' : 'odpada')}</div>
       <div class="meter" title="Do dodatkowego serca"><i style="width:${Math.round(bar * 100)}%"></i></div>` : ''}
     </div>`;
   }).join('');
@@ -354,8 +381,9 @@ function render(s) {
   $('answerBox').classList.toggle('mine', myTurn);
   $('life').textContent = '♥' + Math.max(0, Number(meP?.hearts) | 0);
   $('life').classList.toggle('hidden', !game);
-  $('dockMsg').classList.toggle('hidden', !myTurn);
-  $('dockMsg').textContent = 'Twoja kolej!';
+  const waiting = game && meP?.waiting;
+  $('dockMsg').classList.toggle('hidden', !myTurn && !waiting);
+  $('dockMsg').textContent = waiting ? 'Dołączysz w następnej grze – na razie oglądasz.' : 'Twoja kolej!';
   $('answer').disabled = $('sendBtn').disabled = !myTurn;
   $('answer').placeholder = !game ? 'Czekamy na start…' : myTurn ? 'Odpowiedź…' : 'Nie twoja kolej';
   if (myTurn) $('answer').focus();
