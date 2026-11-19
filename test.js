@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
-const { norm, near1, loadCats, check, addRarity, fuseAfterPass, createRoom } = require('./game.js');
+const { titleCase, norm, near1, loadCats, check, addRarity, fuseAfterPass, createRoom } = require('./game.js');
 
 const dir = path.join(__dirname, 'kategorie');
 const raw = Object.fromEntries(fs.readdirSync(dir).filter(f => f.endsWith('.json'))
@@ -39,8 +39,11 @@ assert.strictEqual(check(CATS, MIASTO, used, '   ').why, 'pusto');
 assert.ok(check(CATS, OWOC, used, 'durian').rarity > check(CATS, OWOC, used, 'jabłko').rarity);
 const u2 = new Set([check(CATS, OWOC, new Set(), 'pomarańcza').n]);
 assert.strictEqual(check(CATS, OWOC, u2, 'pomarańcz').why, 'już było'); // alias = ta sama odpowiedź
-assert.strictEqual(check(CATS, OWOC, new Set(), 'pomarancz').show, 'pomarańcza'); // pokazujemy poprawną formę
-assert.strictEqual(check(CATS, OWOC, new Set(), 'Bananm').show, 'banan');
+assert.strictEqual(check(CATS, OWOC, new Set(), 'pomarancz').show, 'Pomarańcza'); // pokazujemy poprawną formę
+assert.strictEqual(check(CATS, OWOC, new Set(), 'Bananm').show, 'Banan');
+for (const [a, b] of [['mikołaj kopernik', 'Mikołaj Kopernik'], ['bośnia i hercegowina', 'Bośnia i Hercegowina'], ['bielsko-biała', 'Bielsko-Biała'], ['mieszko i', 'Mieszko I'], ['fc barcelona', 'FC Barcelona'], ["joanna d'arc", "Joanna d'Arc"], ['mBank', 'mBank']])
+  assert.strictEqual(titleCase(a), b);
+assert.strictEqual(check(CATS, 'Podaj pisarza lub poetę', new Set(), 'mickiewicz').show, 'Adam Mickiewicz');
 assert.ok(check(CATS, OWOC, new Set(), 'bananm').ok); // literówka
 assert.strictEqual(check(CATS, OWOC, new Set(), 'kiwo').why, 'nie pasuje'); // za krótkie na literówkę
 

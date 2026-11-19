@@ -4,6 +4,19 @@ const MAX_PLAYERS = 8, MIN_PASS_MS = 8000;
 const norm = s => String(s).toLowerCase().replace(/ł/g, 'l').normalize('NFD')
   .replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9+# ]/g, ' ').replace(/\s+/g, ' ').trim();
 
+// Nazwy własne (ludzie, miejsca, kluby) pokazujemy z wielkich liter: "mikołaj kopernik" -> "Mikołaj Kopernik".
+// Reszta (tytuły, rzeczowniki) dostaje tylko wielką pierwszą literę. Słowa z wielką literą w danych
+// ("mBank", "McLaren") zostają bez zmian – tak wpisuje się nietypową pisownię.
+const PROPER = /miasto|kraj|stolic|rzek|wysp|pasmo|stan usa|morze|imię|postać|superbohater|klub|sportowc|wykonawc|pisarz|malarz|kompozytor|króla|aktor|naukowc|zabytek|samochodu|firmę/i;
+const SMALL = new Set(['i', 'w', 'z', 'na', 'nad', 'pod', 'od', 'do', 'de', 'da', 'del', 'van', 'von', 'la', 'le', 'of', 'and', 'the', 'n']);
+const UPPER = /^(fc|ac|as|rb|psg|psv|bvb|gks|rpa|zea|drk|usa|ii|iii|iv|vi|vii|viii|xiv|k2|ac\/dc|u2|t-rex|bmw|vw|ds|mg|byd|gmc|nio|pko|bp|lpp|cd|pkp|pzu|kghm|pge|pgnig|tvn|tvp|ccc|4f|lot|wp|rtv|agd)$/;
+function titleCase(s) {
+  return s.split(' ').map((w, i, all) => /\p{Lu}/u.test(w) ? w
+    : UPPER.test(w) || (w === 'i' && i === all.length - 1 && i > 0) ? w.toUpperCase() // "mieszko i" -> "Mieszko I"
+    : i > 0 && SMALL.has(w) ? w
+    : w.replace(/(^(?!d')|[-'.])(\p{L})/gu, (m, a, b) => a + b.toUpperCase())).join(' ');
+}
+
 // {paczka: {kategoria: ["odp|alias", ...]}} -> {cats: {kategoria: {pack, map: Map(wariant -> {key, rarity})}}, packs}
 // Dalej na liście = rzadsza odpowiedź (rarity 0..1).
 function loadCats(raw) {
@@ -15,6 +28,8 @@ function loadCats(raw) {
       const v = { key: forms[0], show: String(a).split("|")[0].trim(), rarity: i / Math.max(1, answers.length - 1) };
       for (const f of forms) map.set(f, v);
     });
+    const proper = PROPER.test(cat);
+    for (const v of map.values()) v.show = proper ? titleCase(v.show) : /\p{Lu}/u.test(v.show) ? v.show : v.show[0].toUpperCase() + v.show.slice(1);
     cats[cat] = { pack, map };
   }
   return { cats, packs: Object.keys(raw) };
@@ -163,4 +178,4 @@ function createRoom(code, { cats, packs }) {
   return { onMsg, onClose, info, _r: r };
 }
 
-module.exports = { norm, near1, loadCats, check, addRarity, fuseAfterPass, createRoom, MAX_PLAYERS };
+module.exports = { titleCase, norm, near1, loadCats, check, addRarity, fuseAfterPass, createRoom, MAX_PLAYERS };
