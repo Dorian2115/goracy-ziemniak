@@ -12,7 +12,7 @@ function loadCats(raw) {
     const map = new Map();
     answers.forEach((a, i) => {
       const forms = String(a).split('|').map(norm).filter(Boolean);
-      const v = { key: forms[0], rarity: i / Math.max(1, answers.length - 1) };
+      const v = { key: forms[0], show: String(a).split("|")[0].trim(), rarity: i / Math.max(1, answers.length - 1) };
       for (const f of forms) map.set(f, v);
     });
     cats[cat] = { pack, map };
@@ -44,7 +44,7 @@ function check(cats, cat, used, text) {
   }
   if (!v) return { ok: false, why: 'nie pasuje' };
   if (used.has(v.key)) return { ok: false, why: 'już było' };
-  return { ok: true, n: v.key, rarity: v.rarity };
+  return { ok: true, n: v.key, show: v.show, rarity: v.rarity };
 }
 
 function addRarity(p, rarity, maxHearts) {
@@ -140,7 +140,7 @@ function createRoom(code, { cats, packs }) {
       const text = String(m.text || '').slice(0, 40);
       const res = check(cats, r.cat, r.used, text);
       if (!res.ok) return out(conn, { t: 'bad', why: res.why });
-      r.used.add(res.n); r.usedRaw.push(text.trim());
+      r.used.add(res.n); r.usedRaw.push(res.show); // poprawna forma z listy, nie to, co wpisał gracz
       addRarity(p, res.rarity, r.settings.hearts + 1);
       const left = r.deadline - Date.now();
       if (fuseAfterPass(left) !== left) fuse(fuseAfterPass(left));
