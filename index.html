@@ -110,9 +110,18 @@
   .meter { height: 5px; width: 60px; margin: 3px auto 0; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
   .meter i { display: block; height: 100%; background: var(--mint); transition: width .3s; }
 
-  .used { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 0; padding: 0; list-style: none; }
-  .used li { padding: 5px 12px; border-radius: 999px; background: rgba(91, 224, 179, .14); color: var(--mint); font-weight: 600; font-size: 15px; }
-  .log { margin: 20px 0 0; padding: 0; list-style: none; color: var(--dim); font-size: 15px; display: grid; gap: 2px; }
+  .used { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+  .used:empty { display: none; }
+  .used li { padding: 3px 10px; border-radius: 999px; background: rgba(91, 224, 179, .14); color: var(--mint); font-weight: 600; font-size: 14px; }
+  .used li::first-letter { text-transform: uppercase; }
+  .used li:last-child { background: var(--mint); color: #0E3A2C; } /* ostatnia odpowiedź */
+  .center .sub.turn { color: var(--chalk); font-size: 18px; font-weight: 700; }
+  .center .sub.turn.mine { color: var(--hot); font-size: 22px; }
+  .seat .tag { display: inline-block; margin-top: 2px; padding: 1px 8px; border-radius: 999px; background: var(--hot); color: #2B0613; font-weight: 700; font-size: 12px; }
+  .log { margin: 20px auto 0; padding: 12px 16px; max-width: 560px; list-style: none; color: var(--dim); font-size: 15px; display: grid; gap: 2px; border-top: 1px solid var(--rim); }
+  .log:empty { display: none; }
+  .log li:first-child { color: var(--chalk); font-weight: 600; }
+  .log li:nth-child(n+3) { opacity: .6; }
 
   /* Pasek odpowiedzi: pojawia się tylko w twojej turze */
   .dock { z-index: 10;
@@ -189,13 +198,14 @@
   <section id="room" class="hidden">
     <div class="bar">
       <div class="roomcode">Pokój <strong id="roomCode"></strong><button class="copy" id="copyBtn">Kopiuj link</button></div>
-      <div class="roomcode">Gracze <strong id="count"></strong></div>
+      <div class="roomcode">Gracze <strong id="count"></strong><button class="copy" id="leaveBtn">Wyjdź</button></div>
     </div>
     <div class="center">
       <div class="qcard" id="qcard">
         <div class="qnum" id="qnum"></div>
         <div class="cat" id="cat"></div>
         <div class="qhint" id="qhint">Każda pasująca odpowiedź podaje ziemniaka dalej</div>
+        <ul class="used" id="used" aria-label="Odpowiedzi w tej rundzie"></ul>
       </div>
       <div class="sub" id="sub"></div>
       <button class="btn hidden" id="startBtn">Zacznij grę</button>
@@ -213,8 +223,7 @@
       <div class="spud live hidden" id="potato" aria-hidden="true"><i></i></div>
       <div id="seats"></div>
     </div>
-    <ul class="used" id="used" aria-label="Odpowiedzi w tej rundzie"></ul>
-    <ul class="log" id="log" aria-live="polite"></ul>
+    <ul class="log" id="log" aria-live="polite" aria-label="Wydarzenia"></ul>
   </section>
 
   <div class="dock hidden" id="answerBox">
@@ -266,7 +275,7 @@ function connect() {
   link && link.close();
   const ws = link = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
   ws.onopen = () => { $('joinErr').textContent = ''; ws.send(JSON.stringify({ t: 'join', code, name })); };
-  ws.onmessage = e => handle(JSON.parse(e.data));
+  ws.onmessage = e => { if (link === ws) handle(JSON.parse(e.data)); };
   ws.onerror = () => { if (link === ws) lost('Nie udało się połączyć z serwerem. Spróbuj ponownie.'); };
   ws.onclose = () => { if (link === ws && me) lost('Połączenie z serwerem zerwane. Dołącz ponownie.'); };
 }
@@ -302,6 +311,12 @@ $('joinBtn').onclick = () => {
   try { localStorage.setItem('imie', $('name').value); } catch {}
   connect();
 };
+$('leaveBtn').onclick = () => {
+  const ws = link; link = null; me = null; ws && ws.close();
+  show(false); $('joinErr').textContent = '';
+  history.replaceState(null, '', location.pathname);
+  loadRooms();
+};
 $('copyBtn').onclick = async () => {
   try { await navigator.clipboard.writeText(location.href); $('copyBtn').textContent = 'Skopiowano'; }
   catch { prompt('Skopiuj link:', location.href); }
@@ -330,7 +345,8 @@ function render(s) {
   $('qcard').classList.toggle('idle', !game);
   $('qnum').textContent = game ? `Pytanie ${Number(s.round) | 0}` : '';
   $('qhint').classList.toggle('hidden', !game);
-  $('sub').textContent = game ? (myTurn ? 'Ziemniak jest u ciebie' : `Ziemniak jest u: ${holder?.name || ''}`)
+  $('sub').classList.toggle('turn', game); $('sub').classList.toggle('mine', myTurn);
+  $('sub').textContent = game ? (myTurn ? '🔥 Ziemniak jest u ciebie – odpowiadaj!' : `Ziemniak jest u: ${holder?.name || ''}`)
     : host ? (s.players.length < 2 ? 'Wyślij znajomym link do pokoju' : `Przy stole: ${s.players.length}`)
     : 'Gospodarz zacznie grę';
   $('startBtn').classList.toggle('hidden', game || !host);
@@ -353,7 +369,7 @@ function render(s) {
       <div class="avatar" style="--c:${COLORS[i % COLORS.length]}">${esc(p.name[0].toUpperCase())}</div>
       <div class="stool"></div>
       <div class="name">${esc(p.name)}${p.host ? ' <span title="Gospodarz">★</span>' : ''}</div>
-      ${p.id === me ? '<div class="you">to ty</div>' : ''}
+      ${game && p.id === s.holder ? '<div class="tag">ma ziemniaka</div>' : p.id === me ? '<div class="you">to ty</div>' : ''}
       ${game ? `<div class="hearts" aria-label="Serca: ${hearts}">${'♥'.repeat(Math.min(hearts, 9)) || (p.waiting ? 'czeka' : 'odpada')}</div>
       <div class="meter" title="Do dodatkowego serca"><i style="width:${Math.round(bar * 100)}%"></i></div>` : ''}
     </div>`;
@@ -388,7 +404,7 @@ function render(s) {
   $('answer').placeholder = !game ? 'Czekamy na start…' : myTurn ? 'Odpowiedź…' : 'Nie twoja kolej';
   if (myTurn) $('answer').focus();
   $('used').innerHTML = game ? s.used.map(u => `<li>${esc(u)}</li>`).join('') : '';
-  $('log').innerHTML = s.log.slice().reverse().map(l => `<li>${esc(l)}</li>`).join('');
+  $('log').innerHTML = s.log.slice(-4).reverse().map(l => `<li>${esc(l)}</li>`).join('');
 }
 </script>
 </body>

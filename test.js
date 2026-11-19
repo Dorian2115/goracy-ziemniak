@@ -39,7 +39,8 @@ assert.strictEqual(check(CATS, MIASTO, used, '   ').why, 'pusto');
 assert.ok(check(CATS, OWOC, used, 'durian').rarity > check(CATS, OWOC, used, 'jabłko').rarity);
 const u2 = new Set([check(CATS, OWOC, new Set(), 'pomarańcza').n]);
 assert.strictEqual(check(CATS, OWOC, u2, 'pomarańcz').why, 'już było'); // alias = ta sama odpowiedź
-assert.ok(check(CATS, OWOC, new Set(), 'pomarancz').ok);
+assert.strictEqual(check(CATS, OWOC, new Set(), 'pomarancz').show, 'pomarańcza'); // pokazujemy poprawną formę
+assert.strictEqual(check(CATS, OWOC, new Set(), 'Bananm').show, 'banan');
 assert.ok(check(CATS, OWOC, new Set(), 'bananm').ok); // literówka
 assert.strictEqual(check(CATS, OWOC, new Set(), 'kiwo').why, 'nie pasuje'); // za krótkie na literówkę
 
@@ -84,7 +85,8 @@ assert.ok(cel.waiting && cel.hearts === 0);
 room._r.deadline = Date.now() + 1000;
 const holder = room._r.holder === room._r.players[0].id ? A : B;
 const ans = [...CATS[room._r.cat].map.keys()][0];
-room.onMsg(holder, { t: 'answer', text: ans });
+room.onMsg(holder, { t: 'answer', text: '  ' + ans.toUpperCase() });
+assert.deepStrictEqual(room._r.usedRaw, [CATS[room._r.cat].map.get(ans).show]);
 assert.notStrictEqual(room._r.holder, room._r.players[holder === A ? 0 : 1].id);
 assert.notStrictEqual(room._r.holder, cel.id); // czekający nie dostaje ziemniaka
 assert.ok(room._r.deadline - Date.now() > 7000);
