@@ -134,7 +134,7 @@ function createRoom(code, { cats, packs }) {
     if (m.t === 'start' && host && r.state === 'lobby' && r.players.length >= 2) {
       r.players.forEach(q => { q.hearts = r.settings.hearts; q.bar = 0; q.waiting = false; });
       r.state = 'game'; r.winner = null; r.round = 0; r.holder = r.players[Math.floor(Math.random() * r.players.length)].id;
-      r.log.push('Start!'); newRound(); return send();
+      r.log = ['Start!']; newRound(); return send(); // ogłoszenia z lobby znikają po starcie
     }
     if (m.t === 'answer' && r.state === 'game' && r.holder === p.id) {
       const text = String(m.text || '').slice(0, 40);
