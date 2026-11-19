@@ -3,81 +3,206 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gorący Ziemniak</title>
+<title>Gorący ziemniak</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#2b1a10; --card:#3d2617; --txt:#fbead2; --acc:#ffb347; --bad:#ff5c5c; --mut:#b99a7c; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--txt); font:16px/1.4 system-ui, sans-serif; min-height:100vh; display:flex; justify-content:center; }
-  main { width:100%; max-width:720px; padding:16px; }
-  h1 { text-align:center; color:var(--acc); letter-spacing:2px; margin:12px 0 4px; }
-  .card { background:var(--card); border-radius:14px; padding:16px; margin:12px 0; }
-  input, button { font:inherit; padding:10px 14px; border-radius:10px; border:0; }
-  input { width:100%; background:#fff2e0; color:#2b1a10; }
-  button { background:var(--acc); color:#2b1a10; font-weight:700; cursor:pointer; }
-  button:disabled { opacity:.4; cursor:default; }
-  .row { display:flex; gap:8px; margin-top:8px; }
-  .hidden { display:none !important; }
-  .table { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
-  .seat { background:#4d3120; border-radius:12px; padding:10px; min-width:120px; text-align:center; border:2px solid transparent; }
-  .seat.hold { border-color:var(--acc); }
-  .seat.dead { opacity:.35; }
-  .potato { font-size:36px; animation:shake .3s infinite; display:inline-block; }
-  @keyframes shake { 50% { transform:rotate(8deg) scale(1.08); } }
-  .bar { height:6px; background:#2b1a10; border-radius:3px; margin-top:4px; overflow:hidden; }
-  .bar i { display:block; height:100%; background:var(--acc); }
-  .cat { text-align:center; font-size:24px; font-weight:700; }
-  .used { color:var(--mut); font-size:14px; }
-  .log { color:var(--mut); font-size:14px; }
-  .err { color:var(--bad); min-height:1.4em; }
-  .shake { animation:shake .15s 3; }
-  dialog { background:var(--card); color:var(--txt); border:0; border-radius:14px; max-width:420px; }
-  a { color:var(--acc); }
+  :root {
+    --felt: #2B2370; --top: #3A3192; --rim: #4C42B0;
+    --potato: #F2B33D; --hot: #FF4F79; --mint: #5BE0B3; --chalk: #F5F2FF; --dim: #B4ACE6;
+    --font: 'Bricolage Grotesque', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; min-height: 100dvh; color: var(--chalk); font: 400 17px/1.45 var(--font);
+    background: radial-gradient(120% 80% at 50% 0%, #382C8A 0%, var(--felt) 60%) fixed, var(--felt);
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 16px 16px 140px; }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--potato); outline-offset: 3px; }
+  .hidden { display: none !important; }
+
+  /* Ekran wejścia */
+  .join { min-height: calc(100dvh - 32px); display: grid; align-content: center; gap: 28px; }
+  .brand { display: flex; align-items: center; gap: 18px; }
+  .brand h1 {
+    margin: 0; font-size: clamp(52px, 15vw, 88px); line-height: .86; font-weight: 800;
+    font-variation-settings: 'opsz' 96; letter-spacing: -0.035em;
+  }
+  .lede { margin: 0; color: var(--dim); max-width: 34ch; font-size: 19px; }
+  .field { display: grid; gap: 6px; }
+  .field span { color: var(--dim); font-size: 15px; }
+  .field input {
+    width: 100%; padding: 14px 16px; border-radius: 14px; border: 2px solid var(--rim);
+    background: var(--top); font-size: 20px; font-weight: 600;
+  }
+  .field input:focus { border-color: var(--potato); outline: none; }
+  #code { letter-spacing: .12em; text-transform: uppercase; }
+  .fields { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; }
+  .btn {
+    border: 0; border-radius: 999px; padding: 14px 26px; font-weight: 700; font-size: 18px;
+    background: var(--potato); color: #2A1A00; cursor: pointer; box-shadow: 0 4px 0 #B67C14;
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #B67C14; }
+  .btn:disabled { opacity: .45; cursor: default; transform: none; }
+  .ghost { background: none; border: 0; color: var(--dim); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; padding: 6px 0; font-size: 16px; }
+  .err { color: var(--hot); min-height: 1.45em; margin: 0; font-weight: 600; }
+
+  /* Ziemniak: jedyny dekoracyjny element, rysowany w CSS */
+  .spud {
+    flex: none; width: 76px; height: 62px; position: relative;
+    border-radius: 56% 44% 52% 48% / 62% 54% 46% 38%;
+    background: radial-gradient(circle at 34% 30%, #FFD98A 0 12%, var(--potato) 46%, #C47E1E 100%);
+  }
+  .spud::before, .spud::after {
+    content: ''; position: absolute; width: 7px; height: 5px; border-radius: 50%; background: #9A5F12; opacity: .55;
+  }
+  .spud::before { left: 28%; top: 52%; }
+  .spud::after { left: 62%; top: 30%; width: 5px; height: 4px; }
+
+  /* Pokój */
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .bar b { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+  .roomcode { display: flex; align-items: center; gap: 10px; color: var(--dim); }
+  .roomcode strong { color: var(--chalk); letter-spacing: .12em; font-size: 20px; }
+  .copy { white-space: nowrap; border: 2px solid var(--rim); background: none; border-radius: 999px; padding: 6px 14px; cursor: pointer; font-weight: 600; }
+
+  .table {
+    position: relative; width: min(100%, 560px); aspect-ratio: 1; margin: 8px auto 0;
+  }
+  .disc {
+    position: absolute; inset: 15%; border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, #4436A6, var(--top) 70%);
+    box-shadow: inset 0 0 0 10px var(--rim), 0 24px 60px rgba(10, 4, 50, .55);
+    transition: box-shadow .25s;
+  }
+  .table.boom .disc { box-shadow: inset 0 0 0 10px var(--hot), 0 0 80px var(--hot); }
+  .center {
+    position: absolute; inset: 31%; display: grid; place-content: center; text-align: center; gap: 10px; z-index: 1;
+  }
+  .center .cat { font-size: clamp(20px, 5.4vw, 32px); font-weight: 800; line-height: 1.02; letter-spacing: -0.02em; }
+  .center .sub { color: var(--dim); font-size: 15px; }
+  .table .spud.live {
+    position: absolute; left: 50%; top: 50%; width: 58px; height: 48px; margin: -24px 0 0 -29px; z-index: 2;
+    transition: transform .35s cubic-bezier(.3, 1.4, .5, 1);
+    filter: drop-shadow(0 0 14px rgba(255, 79, 121, .8));
+  }
+  .table .spud.live > i { display: block; width: 100%; height: 100%; border-radius: inherit; background: inherit; animation: jitter .18s infinite; }
+  @keyframes jitter { 25% { transform: translate(1px, -1px) rotate(4deg); } 75% { transform: translate(-1px, 1px) rotate(-4deg); } }
+
+  .seat {
+    position: absolute; width: 104px; margin-left: -52px; margin-top: -46px; text-align: center; z-index: 3;
+    transition: opacity .3s;
+  }
+  .avatar {
+    width: 56px; height: 56px; margin: 0 auto 4px; border-radius: 50%; display: grid; place-items: center;
+    font-weight: 800; font-size: 24px; color: #1D1546; background: var(--c); border: 3px solid var(--felt);
+  }
+  .seat.hold .avatar { box-shadow: 0 0 0 4px var(--hot); }
+  .seat.dead { opacity: .35; }
+  .seat .name { font-weight: 700; font-size: 15px; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .seat .you { color: var(--potato); font-weight: 600; font-size: 13px; }
+  .hearts { font-size: 13px; letter-spacing: 2px; color: var(--hot); min-height: 1.2em; }
+  .meter { height: 5px; width: 60px; margin: 3px auto 0; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--mint); transition: width .3s; }
+
+  .used { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 0; padding: 0; list-style: none; }
+  .used li { padding: 5px 12px; border-radius: 999px; background: rgba(91, 224, 179, .14); color: var(--mint); font-weight: 600; font-size: 15px; }
+  .log { margin: 20px 0 0; padding: 0; list-style: none; color: var(--dim); font-size: 15px; display: grid; gap: 2px; }
+
+  /* Pasek odpowiedzi: pojawia się tylko w twojej turze */
+  .dock {
+    position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    background: var(--hot); color: #2B0613; box-shadow: 0 -10px 40px rgba(255, 79, 121, .45);
+  }
+  .dock-in { max-width: 640px; margin: 0 auto; }
+  .dock p { margin: 0 0 8px; font-weight: 700; }
+  .dock form { display: flex; gap: 10px; }
+  .dock input { flex: 1; min-width: 0; border: 0; border-radius: 14px; padding: 14px 16px; font-size: 20px; font-weight: 600; background: #FFF4F7; color: #2B0613; }
+  .dock input:focus { outline: 3px solid #2B0613; }
+  .dock .btn { background: #2B0613; color: var(--chalk); box-shadow: none; }
+  .dock .err { color: #2B0613; min-height: 0; margin-top: 6px; }
+  .shake { animation: shake .12s 3; }
+  @keyframes shake { 33% { transform: translateX(-6px); } 66% { transform: translateX(6px); } }
+
+  dialog { background: var(--top); color: var(--chalk); border: 0; border-radius: 22px; padding: 24px; max-width: min(420px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgba(20, 12, 70, .7); }
+  dialog h2 { margin: 0 0 8px; font-size: 28px; letter-spacing: -0.02em; }
+  dialog ul { padding-left: 20px; margin: 0 0 20px; display: grid; gap: 8px; }
+
+  @media (max-width: 420px) {
+    .seat { width: 84px; margin-left: -42px; }
+    .avatar { width: 46px; height: 46px; font-size: 20px; }
+    .fields { grid-template-columns: 1fr; }
+    .bar > b { display: none; }
+    .bar { justify-content: flex-end; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
 <main>
-  <h1>🥔 GORĄCY ZIEMNIAK</h1>
-  <p style="text-align:center"><a href="#" id="howBtn">Jak grać?</a></p>
-
-  <section id="join" class="card">
-    <label>Kod pokoju<input id="code" maxlength="6" autocomplete="off"></label>
-    <label style="display:block;margin-top:8px">Twoje imię<input id="name" maxlength="16" autocomplete="off"></label>
-    <div class="row"><button id="joinBtn" style="flex:1">▼ ZAJMIJ MIEJSCE ▼</button></div>
-    <p class="err" id="joinErr"></p>
+  <section id="join" class="join">
+    <div class="brand">
+      <h1>Gorący<br>ziemniak</h1>
+      <div class="spud" aria-hidden="true"></div>
+    </div>
+    <p class="lede">Odpowiadaj na hasło i podaj ziemniaka dalej, zanim wybuchnie ci w rękach.</p>
+    <div class="fields">
+      <label class="field"><span>Kod pokoju</span><input id="code" maxlength="6" autocomplete="off"></label>
+      <label class="field"><span>Twoje imię</span><input id="name" maxlength="16" autocomplete="off" placeholder="np. Ola"></label>
+    </div>
+    <div>
+      <button id="joinBtn" class="btn">Usiądź przy stole</button>
+      <p class="err" id="joinErr" role="status"></p>
+    </div>
+    <button class="ghost" id="howBtn" style="justify-self:start">Jak się gra?</button>
   </section>
 
   <section id="room" class="hidden">
-    <div class="card">
-      Pokój <b id="roomCode"></b> · zaproś znajomych linkiem:
-      <input id="link" readonly onclick="this.select()">
+    <div class="bar">
+      <b>Gorący ziemniak</b>
+      <div class="roomcode">Pokój <strong id="roomCode"></strong><button class="copy" id="copyBtn">Kopiuj link</button></div>
     </div>
-    <div class="card cat" id="cat"></div>
-    <div class="table" id="table"></div>
-    <div class="card" id="lobbyBox">
-      <p id="lobbyMsg"></p>
-      <button id="startBtn">Start gry</button>
+    <div class="table" id="table">
+      <div class="disc"></div>
+      <div class="center">
+        <div class="cat" id="cat"></div>
+        <div class="sub" id="sub"></div>
+        <button class="btn hidden" id="startBtn">Zacznij grę</button>
+      </div>
+      <div class="spud live hidden" id="potato" aria-hidden="true"><i></i></div>
+      <div id="seats"></div>
     </div>
-    <div class="card hidden" id="answerBox">
-      <form id="answerForm" class="row" style="margin:0">
-        <input id="answer" maxlength="40" autocomplete="off" placeholder="Twoja odpowiedź…">
-        <button>OK</button>
-      </form>
-      <p class="err" id="ansErr"></p>
-    </div>
-    <div class="card used" id="used"></div>
-    <div class="card log" id="log"></div>
+    <ul class="used" id="used" aria-label="Odpowiedzi w tej rundzie"></ul>
+    <ul class="log" id="log" aria-live="polite"></ul>
   </section>
 
+  <div class="dock hidden" id="answerBox">
+    <div class="dock-in">
+      <p id="dockMsg">Twoja kolej</p>
+      <form id="answerForm">
+        <input id="answer" maxlength="40" autocomplete="off" aria-label="Twoja odpowiedź">
+        <button class="btn">Podaj dalej</button>
+      </form>
+      <p class="err" id="ansErr" role="status"></p>
+    </div>
+  </div>
+
   <dialog id="how">
-    <h2>Jak grać?</h2>
+    <h2>Jak się gra?</h2>
     <ul>
-      <li>Odpowiedz na hasło, zanim ziemniak wybuchnie w twoich rękach.</li>
-      <li>Dobra odpowiedź przekazuje ziemniaka dalej. Czas wybuchu jest ukryty.</li>
-      <li>Rzadsze odpowiedzi szybciej napełniają pasek – pełny pasek to dodatkowe serce.</li>
-      <li>W jednej rundzie odpowiedzi nie mogą się powtarzać.</li>
-      <li>Wygrywa ostatni gracz z sercem.</li>
+      <li>Na stole leży hasło, np. „Owoc”. Kto trzyma ziemniaka, podaje pasującą odpowiedź.</li>
+      <li>Dobra odpowiedź przekazuje ziemniaka dalej. Nikt nie wie, kiedy wybuchnie.</li>
+      <li>Wybuch w twoich rękach zabiera serce.</li>
+      <li>Rzadkie odpowiedzi napełniają zielony pasek. Pełny pasek daje dodatkowe serce.</li>
+      <li>W jednej rundzie odpowiedzi nie mogą się powtarzać. Wygrywa ostatnia osoba z sercem.</li>
     </ul>
-    <form method="dialog"><button>Rozumiem</button></form>
+    <form method="dialog"><button class="btn">Rozumiem</button></form>
   </dialog>
 </main>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" integrity="sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR" crossorigin="anonymous"></script>
@@ -89,20 +214,21 @@ const cleanCode = s => String(s).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0
 const fromUrl = new URLSearchParams(location.search).get('pokoj');
 $('code').value = fromUrl ? cleanCode(fromUrl) : Math.random().toString(36).slice(2, 6).toUpperCase();
 try { $('name').value = localStorage.getItem('imie') || ''; } catch {}
-$('howBtn').onclick = e => { e.preventDefault(); $('how').showModal(); };
+$('howBtn').onclick = () => $('how').showModal();
 
 let link, me, peer;  // link.send(string) – do gospodarza (lub lokalnie, jeśli to my)
 function handle(m) {
   if (m.t === 'err') { $('joinErr').textContent = m.msg; peer && peer.destroy(); return; }
-  if (m.t === 'bad') { $('ansErr').textContent = '✗ ' + m.why; $('answer').classList.add('shake'); setTimeout(() => $('answer').classList.remove('shake'), 500); return; }
+  if (m.t === 'bad') { $('ansErr').textContent = WHY[m.why] || m.why; $('answer').classList.add('shake'); setTimeout(() => $('answer').classList.remove('shake'), 400); return; }
   if (m.t === 'state') render(m);
 }
+const WHY = { 'pusto': 'Wpisz odpowiedź.', 'już było': 'Ta odpowiedź już padła. Spróbuj innej.', 'nie pasuje': 'Tego nie ma na liście. Spróbuj innej.' };
 function lost(msg) { $('joinErr').textContent = msg; show(false); me = null; peer && peer.destroy(); }
 
 async function connect() {
   const code = cleanCode($('code').value), name = $('name').value.trim();
-  if (!code || !name) return $('joinErr').textContent = 'Podaj kod i imię.';
-  $('joinErr').textContent = 'Łączenie…';
+  if (!code || !name) return $('joinErr').textContent = 'Wpisz kod pokoju i imię.';
+  $('joinErr').textContent = 'Łączę z pokojem…';
   // Kto pierwszy zajmie ID pokoju, zostaje gospodarzem; reszta łączy się z nim.
   peer = new Peer(PREFIX + code);
   peer.on('open', async () => {
@@ -118,55 +244,93 @@ async function connect() {
     link.send(JSON.stringify({ t: 'join', name }));
   });
   peer.on('error', e => {
-    if (e.type !== 'unavailable-id') return lost('Błąd połączenia: ' + e.type);
+    if (e.type !== 'unavailable-id') return lost('Nie udało się połączyć (' + e.type + '). Odśwież stronę i spróbuj ponownie.');
     peer.destroy();
     peer = new Peer();
-    peer.on('error', e2 => lost('Błąd połączenia: ' + e2.type));
+    peer.on('error', e2 => lost('Nie udało się połączyć (' + e2.type + '). Odśwież stronę i spróbuj ponownie.'));
     peer.on('open', () => {
       const c = peer.connect(PREFIX + code, { reliable: true });
       c.on('open', () => { $('joinErr').textContent = ''; link = c; c.send(JSON.stringify({ t: 'join', name })); });
       c.on('data', d => handle(JSON.parse(d)));
-      c.on('close', () => { if (me) lost('Gospodarz opuścił pokój.'); });
+      c.on('close', () => { if (me) lost('Gospodarz opuścił pokój. Załóż nowy, żeby grać dalej.'); });
     });
   });
 }
-function show(inRoom) { $('join').classList.toggle('hidden', inRoom); $('room').classList.toggle('hidden', !inRoom); }
+function show(inRoom) { $('join').classList.toggle('hidden', inRoom); $('room').classList.toggle('hidden', !inRoom); if (!inRoom) $('answerBox').classList.add('hidden'); }
 
 $('joinBtn').onclick = () => {
   try { localStorage.setItem('imie', $('name').value); } catch {}
   connect();
 };
+$('copyBtn').onclick = async () => {
+  try { await navigator.clipboard.writeText(location.href); $('copyBtn').textContent = 'Skopiowano'; }
+  catch { prompt('Skopiuj link:', location.href); }
+  setTimeout(() => $('copyBtn').textContent = 'Kopiuj link', 1500);
+};
 $('startBtn').onclick = () => link.send(JSON.stringify({ t: 'start' }));
 $('answerForm').onsubmit = e => {
   e.preventDefault();
-  link.send(JSON.stringify({ t: 'answer', text: $('answer').value }));
-  $('answer').value = ''; $('ansErr').textContent = '';
+  const text = $('answer').value;
+  $('answer').value = ''; $('ansErr').textContent = '';  // przed send: u gospodarza odpowiedź wraca synchronicznie
+  link.send(JSON.stringify({ t: 'answer', text }));
 };
 
+const COLORS = ['#F2B33D', '#5BE0B3', '#FF8FAB', '#7FB7FF', '#C7A6FF', '#FFD86B', '#8EF0E0', '#FFA97A'];
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+let lastHearts = null;
 function render(s) {
   me = s.you; show(true);
   history.replaceState(null, '', '?pokoj=' + s.code);
-  $('roomCode').textContent = s.code; $('link').value = location.href;
+  $('roomCode').textContent = s.code;
   const game = s.state === 'game', myTurn = game && s.holder === me;
-  $('cat').textContent = game ? s.cat : (s.winner ? `🏆 Wygrał(a): ${s.winner}` : 'Czekamy na graczy…');
-  $('table').innerHTML = s.players.map(p => `
-    <div class="seat ${game && p.id === s.holder ? 'hold' : ''} ${game && p.hearts <= 0 ? 'dead' : ''}">
-      <div>${game && p.id === s.holder ? '<span class="potato">🥔</span>' : '🙂'}</div>
-      <b>${esc(p.name)}</b>${p.host ? ' 👑' : ''}${p.id === me ? ' (ty)' : ''}
-      <div>${game ? '❤️'.repeat(Math.max(0, p.hearts)) || '💀' : ''}</div>
-      ${game ? `<div class="bar"><i style="width:${Math.round(p.bar * 100)}%"></i></div>` : ''}
-    </div>`).join('');
+  const holder = s.players.find(p => p.id === s.holder);
   const host = s.players[0]?.id === me;
-  $('lobbyBox').classList.toggle('hidden', game);
-  $('startBtn').classList.toggle('hidden', !host);
+
+  $('cat').textContent = game ? s.cat : s.winner ? `${s.winner} wygrywa!` : 'Czekamy na graczy';
+  $('sub').textContent = game ? (myTurn ? 'Ziemniak jest u ciebie' : `Ziemniak jest u: ${holder?.name || ''}`)
+    : host ? (s.players.length < 2 ? 'Wyślij znajomym link do pokoju' : `Przy stole: ${s.players.length}`)
+    : 'Gospodarz zacznie grę';
+  $('startBtn').classList.toggle('hidden', game || !host);
   $('startBtn').disabled = s.players.length < 2;
-  $('lobbyMsg').textContent = host ? (s.players.length < 2 ? 'Potrzeba co najmniej 2 graczy.' : 'Możesz zaczynać!') : 'Czekamy, aż gospodarz 👑 zacznie grę.';
+  $('startBtn').textContent = s.winner ? 'Zagraj jeszcze raz' : 'Zacznij grę';
+
+  // Miejsca wokół stołu; ty zawsze siedzisz na dole.
+  const n = s.players.length, mine = s.players.findIndex(p => p.id === me);
+  const pos = {};
+  $('seats').innerHTML = s.players.map((p, i) => {
+    const a = Math.PI / 2 + ((i - mine) / n) * Math.PI * 2;
+    const x = 50 + Math.cos(a) * 41, y = 50 + Math.sin(a) * 41;
+    pos[p.id] = [Math.cos(a), Math.sin(a)];
+    const dead = game && p.hearts <= 0;
+    return `<div class="seat ${game && p.id === s.holder ? 'hold' : ''} ${dead ? 'dead' : ''}" style="left:${x}%;top:${y}%">
+      <div class="avatar" style="--c:${COLORS[i % COLORS.length]}">${esc(p.name[0].toUpperCase())}</div>
+      <div class="name">${esc(p.name)}${p.host ? ' <span title="Gospodarz">★</span>' : ''}</div>
+      ${p.id === me ? '<div class="you">to ty</div>' : ''}
+      ${game ? `<div class="hearts" aria-label="Serca: ${p.hearts}">${'♥'.repeat(Math.max(0, p.hearts)) || 'odpada'}</div>
+      <div class="meter" title="Do dodatkowego serca"><i style="width:${Math.round(p.bar * 100)}%"></i></div>` : ''}
+    </div>`;
+  }).join('');
+
+  // Ziemniak przesuwa się w stronę trzymającego.
+  const pot = $('potato');
+  pot.classList.toggle('hidden', !game);
+  if (game && pos[s.holder]) {
+    const r = $('table').clientWidth * 0.28;
+    pot.style.transform = `translate(${pos[s.holder][0] * r}px, ${pos[s.holder][1] * r}px)`;
+  }
+
+  // Błysk stołu, gdy ktoś stracił serce.
+  const hearts = s.players.reduce((t, p) => t + p.hearts, 0);
+  if (game && lastHearts !== null && hearts < lastHearts) {
+    $('table').classList.add('boom'); setTimeout(() => $('table').classList.remove('boom'), 600);
+  }
+  lastHearts = game ? hearts : null;
+
   $('answerBox').classList.toggle('hidden', !myTurn);
+  $('dockMsg').textContent = `Twoja kolej. Hasło: ${s.cat || ''}`;
   if (myTurn) $('answer').focus();
-  $('used').textContent = game ? 'Użyte: ' + (s.used.join(', ') || '—') : '';
-  $('used').classList.toggle('hidden', !game);
-  $('log').innerHTML = s.log.map(esc).join('<br>');
+  $('used').innerHTML = game ? s.used.map(u => `<li>${esc(u)}</li>`).join('') : '';
+  $('log').innerHTML = s.log.slice().reverse().map(l => `<li>${esc(l)}</li>`).join('');
 }
 </script>
 </body>
