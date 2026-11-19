@@ -86,7 +86,7 @@ function createRoom(code, { cats, packs }) {
   function send() {
     const pub = {
       t: 'state', code, state: r.state, cat: r.cat, round: r.round, holder: r.holder, used: r.usedRaw,
-      log: r.log.slice(-6), winner: r.winner, settings: r.settings, packs: packInfo,
+      log: r.log.slice(-30), winner: r.winner, settings: r.settings, packs: packInfo,
       players: r.players.map(p => ({ id: p.id, name: p.name, hearts: p.hearts, bar: p.bar, waiting: p.waiting, host: p === r.players[0] })),
     };
     for (const p of r.players) out(p.conn, { ...pub, you: p.id });
@@ -144,12 +144,20 @@ function createRoom(code, { cats, packs }) {
     }
     const p = me.get(conn);
     if (!p) return;
+    if (m.t === 'chat') {
+      const text = String(m.text || '').trim().slice(0, 200), now = Date.now();
+      if (!text || now - (p.lastChat || 0) < 500) return; // shortcut: prosty limit spamu (2 wiadomości/s), wystarczy dla znajomych
+      p.lastChat = now;
+      r.log.push({ id: p.id, n: p.name, text }); r.log = r.log.slice(-100);
+      return send();
+    }
     const host = p === r.players[0];
     if (m.t === 'settings' && host && r.state === 'lobby') { setSettings(m); return send(); }
     if (m.t === 'start' && host && r.state === 'lobby' && r.players.length >= 2) {
       r.players.forEach(q => { q.hearts = r.settings.hearts; q.bar = 0; q.waiting = false; });
       r.state = 'game'; r.winner = null; r.round = 0; r.holder = r.players[Math.floor(Math.random() * r.players.length)].id;
-      r.log = ['Start!']; newRound(); return send(); // ogłoszenia z lobby znikają po starcie
+      r.log = r.log.filter(l => typeof l !== 'string'); // ogłoszenia z lobby znikają po starcie, wiadomości graczy zostają
+      r.log.push('Start!'); newRound(); return send();
     }
     if (m.t === 'answer' && r.state === 'game' && r.holder === p.id) {
       const text = String(m.text || '').slice(0, 40);

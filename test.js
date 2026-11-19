@@ -62,6 +62,13 @@ const A = inbox('A'), B = inbox('B'), C = inbox('C'), room = createRoom('TEST', 
 room.onMsg(A, { t: 'join', name: 'Ala' });
 room.onMsg(B, { t: 'join', name: 'Bob' });
 
+// czat: przycięty tekst, puste i zbyt szybkie wiadomości odrzucone
+room.onMsg(B, { t: 'chat', text: '  hej ' });
+room.onMsg(B, { t: 'chat', text: 'spam' });
+room.onMsg(A, { t: 'chat', text: '   ' });
+room.onMsg(A, { t: 'chat', text: 'x'.repeat(500) });
+assert.deepStrictEqual(room._r.log.filter(l => typeof l !== 'string').map(l => [l.n, l.text.length]), [['Bob', 3], ['Ala', 200]]);
+
 // ustawienia: tylko gospodarz, wartości przycięte
 room.onMsg(B, { t: 'settings', fuseMin: 7, fuseMax: 7, hearts: 4, packs: ['Polska'] });
 assert.strictEqual(room._r.settings.hearts, 2);
@@ -76,6 +83,8 @@ room.onMsg(B, { t: 'start' });
 assert.strictEqual(room._r.state, 'lobby'); // Bob nie jest gospodarzem
 room.onMsg(A, { t: 'start' });
 assert.strictEqual(room._r.state, 'game');
+assert.ok(room._r.log.some(l => l.text === 'hej')); // wiadomości graczy zostają po starcie
+assert.ok(!room._r.log.some(l => typeof l === 'string' && l.includes('dołącza'))); // ogłoszenia z lobby znikają
 assert.strictEqual(CATS[room._r.cat].pack, 'Polska');
 assert.ok(room._r.players.every(q => q.hearts === 3));
 
