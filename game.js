@@ -31,7 +31,7 @@
 
     function send() {
       const pub = {
-        t: 'state', code, state: r.state, cat: r.cat, holder: r.holder, used: r.usedRaw,
+        t: 'state', code, state: r.state, cat: r.cat, round: r.round, holder: r.holder, used: r.usedRaw,
         log: r.log.slice(-6), winner: r.winner,
         players: r.players.map(p => ({ id: p.id, name: p.name, hearts: p.hearts, bar: p.bar, host: p === r.players[0] })),
       };
@@ -44,7 +44,7 @@
     function newRound() {
       const keys = Object.keys(cats);
       r.cat = keys[Math.floor(Math.random() * keys.length)];
-      r.used = new Set(); r.usedRaw = [];
+      r.used = new Set(); r.usedRaw = []; r.round = (r.round || 0) + 1;
       clearTimeout(r.timer);
       r.timer = setTimeout(explode, 10000 + Math.random() * 20000); // ukryty czas: 10–30 s
     }
@@ -76,7 +76,7 @@
       if (!p) return;
       if (m.t === 'start' && p === r.players[0] && r.state === 'lobby' && r.players.length >= 2) {
         r.players.forEach(q => { q.hearts = START_HEARTS; q.bar = 0; });
-        r.state = 'game'; r.winner = null; r.holder = r.players[Math.floor(Math.random() * r.players.length)].id;
+        r.state = 'game'; r.winner = null; r.round = 0; r.holder = r.players[Math.floor(Math.random() * r.players.length)].id;
         r.log.push('Start!'); newRound(); return send();
       }
       if (m.t === 'answer' && r.state === 'game' && r.holder === p.id) {

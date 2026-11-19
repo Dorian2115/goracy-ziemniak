@@ -78,6 +78,12 @@
   .table.boom { background: radial-gradient(ellipse 60% 55% at 50% 52%, rgba(255, 79, 121, .55), transparent 75%); }
   .center { display: grid; justify-items: center; text-align: center; gap: 8px; margin-top: 8px; }
   .center .cat { font-size: clamp(30px, 8vw, 48px); font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+  .qcard { width: min(100%, 560px); text-align: left; background: var(--top); border: 2px solid var(--rim); border-radius: 22px; padding: 16px 20px 14px; }
+  .qcard .cat { font-size: clamp(22px, 5.5vw, 30px); line-height: 1.12; letter-spacing: -0.015em; text-wrap: balance; }
+  .qnum { color: var(--potato); font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+  .qhint { color: var(--dim); font-size: 14px; margin-top: 8px; }
+  .qcard.idle { text-align: center; background: none; border-color: transparent; }
+  .qcard.idle .cat { font-size: clamp(30px, 8vw, 48px); }
   .center .sub { color: var(--dim); font-size: 15px; }
   .table .spud.live {
     position: absolute; left: 50%; top: 52%; width: 72px; height: 58px; margin: -29px 0 0 -36px; z-index: 2;
@@ -174,7 +180,11 @@
       <div class="roomcode">Gracze <strong id="count"></strong></div>
     </div>
     <div class="center">
-      <div class="cat" id="cat"></div>
+      <div class="qcard" id="qcard">
+        <div class="qnum" id="qnum"></div>
+        <div class="cat" id="cat"></div>
+        <div class="qhint" id="qhint">Każda pasująca odpowiedź podaje ziemniaka dalej</div>
+      </div>
       <div class="sub" id="sub"></div>
       <button class="btn hidden" id="startBtn">Zacznij grę</button>
     </div>
@@ -201,7 +211,7 @@
   <dialog id="how">
     <h2>Jak się gra?</h2>
     <ul>
-      <li>Na stole leży hasło, np. „Owoc”. Kto trzyma ziemniaka, podaje pasującą odpowiedź.</li>
+      <li>Każda runda to pytanie, np. „Podaj nazwę owocu”. Kto trzyma ziemniaka, podaje pasującą odpowiedź.</li>
       <li>Dobra odpowiedź przekazuje ziemniaka dalej. Nikt nie wie, kiedy wybuchnie.</li>
       <li>Wybuch w twoich rękach zabiera serce.</li>
       <li>Rzadkie odpowiedzi napełniają zielony pasek. Pełny pasek daje dodatkowe serce.</li>
@@ -292,6 +302,9 @@ function render(s) {
   const host = s.players[0]?.id === me;
 
   $('cat').textContent = game ? s.cat : s.winner ? `${s.winner} wygrywa!` : 'Czekamy na graczy';
+  $('qcard').classList.toggle('idle', !game);
+  $('qnum').textContent = game ? `Pytanie ${Number(s.round) | 0}` : '';
+  $('qhint').classList.toggle('hidden', !game);
   $('sub').textContent = game ? (myTurn ? 'Ziemniak jest u ciebie' : `Ziemniak jest u: ${holder?.name || ''}`)
     : host ? (s.players.length < 2 ? 'Wyślij znajomym link do pokoju' : `Przy stole: ${s.players.length}`)
     : 'Gospodarz zacznie grę';
@@ -342,7 +355,7 @@ function render(s) {
   $('life').textContent = '♥' + Math.max(0, Number(meP?.hearts) | 0);
   $('life').classList.toggle('hidden', !game);
   $('dockMsg').classList.toggle('hidden', !myTurn);
-  $('dockMsg').textContent = `Twoja kolej. Hasło: ${s.cat || ''}`;
+  $('dockMsg').textContent = 'Twoja kolej!';
   $('answer').disabled = $('sendBtn').disabled = !myTurn;
   $('answer').placeholder = !game ? 'Czekamy na start…' : myTurn ? 'Odpowiedź…' : 'Nie twoja kolej';
   if (myTurn) $('answer').focus();

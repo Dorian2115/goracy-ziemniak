@@ -7,13 +7,13 @@ assert.strictEqual(norm('  Łódź '), 'lodz');
 assert.strictEqual(norm('Kazimierz  Dolny!'), 'kazimierz dolny');
 
 const used = new Set();
-const a = check(CATS, 'Miasto w Polsce', used, 'lodz');
+const a = check(CATS, 'Podaj miasto w Polsce', used, 'lodz');
 assert.ok(a.ok);
 used.add(a.n);
-assert.strictEqual(check(CATS, 'Miasto w Polsce', used, 'ŁÓDŹ').why, 'już było');
-assert.strictEqual(check(CATS, 'Miasto w Polsce', used, 'Berlin').why, 'nie pasuje');
-assert.strictEqual(check(CATS, 'Miasto w Polsce', used, '   ').why, 'pusto');
-assert.ok(check(CATS, 'Owoc', used, 'durian').rarity > check(CATS, 'Owoc', used, 'jabłko').rarity);
+assert.strictEqual(check(CATS, 'Podaj miasto w Polsce', used, 'ŁÓDŹ').why, 'już było');
+assert.strictEqual(check(CATS, 'Podaj miasto w Polsce', used, 'Berlin').why, 'nie pasuje');
+assert.strictEqual(check(CATS, 'Podaj miasto w Polsce', used, '   ').why, 'pusto');
+assert.ok(check(CATS, 'Podaj nazwę owocu', used, 'durian').rarity > check(CATS, 'Podaj nazwę owocu', used, 'jabłko').rarity);
 
 const p = { hearts: 2, bar: 0 };
 addRarity(p, 1); addRarity(p, 1);
