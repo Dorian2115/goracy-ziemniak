@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gorący Ziemniak</title>
+<style>
+  :root { --bg:#2b1a10; --card:#3d2617; --txt:#fbead2; --acc:#ffb347; --bad:#ff5c5c; --mut:#b99a7c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:16px/1.4 system-ui, sans-serif; min-height:100vh; display:flex; justify-content:center; }
+  main { width:100%; max-width:720px; padding:16px; }
+  h1 { text-align:center; color:var(--acc); letter-spacing:2px; margin:12px 0 4px; }
+  .card { background:var(--card); border-radius:14px; padding:16px; margin:12px 0; }
+  input, button { font:inherit; padding:10px 14px; border-radius:10px; border:0; }
+  input { width:100%; background:#fff2e0; color:#2b1a10; }
+  button { background:var(--acc); color:#2b1a10; font-weight:700; cursor:pointer; }
+  button:disabled { opacity:.4; cursor:default; }
+  .row { display:flex; gap:8px; margin-top:8px; }
+  .hidden { display:none !important; }
+  .table { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+  .seat { background:#4d3120; border-radius:12px; padding:10px; min-width:120px; text-align:center; border:2px solid transparent; }
+  .seat.hold { border-color:var(--acc); }
+  .seat.dead { opacity:.35; }
+  .potato { font-size:36px; animation:shake .3s infinite; display:inline-block; }
+  @keyframes shake { 50% { transform:rotate(8deg) scale(1.08); } }
+  .bar { height:6px; background:#2b1a10; border-radius:3px; margin-top:4px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--acc); }
+  .cat { text-align:center; font-size:24px; font-weight:700; }
+  .used { color:var(--mut); font-size:14px; }
+  .log { color:var(--mut); font-size:14px; }
+  .err { color:var(--bad); min-height:1.4em; }
+  .shake { animation:shake .15s 3; }
+  dialog { background:var(--card); color:var(--txt); border:0; border-radius:14px; max-width:420px; }
+  a { color:var(--acc); }
+</style>
+</head>
+<body>
+<main>
+  <h1>🥔 GORĄCY ZIEMNIAK</h1>
+  <p style="text-align:center"><a href="#" id="howBtn">Jak grać?</a></p>
+
+  <section id="join" class="card">
+    <label>Kod pokoju<input id="code" maxlength="6" autocomplete="off"></label>
+    <label style="display:block;margin-top:8px">Twoje imię<input id="name" maxlength="16" autocomplete="off"></label>
+    <div class="row"><button id="joinBtn" style="flex:1">▼ ZAJMIJ MIEJSCE ▼</button></div>
+    <p class="err" id="joinErr"></p>
+  </section>
+
+  <section id="room" class="hidden">
+    <div class="card">
+      Pokój <b id="roomCode"></b> · zaproś znajomych linkiem:
+      <input id="link" readonly onclick="this.select()">
+    </div>
+    <div class="card cat" id="cat"></div>
+    <div class="table" id="table"></div>
+    <div class="card" id="lobbyBox">
+      <p id="lobbyMsg"></p>
+      <button id="startBtn">Start gry</button>
+    </div>
+    <div class="card hidden" id="answerBox">
+      <form id="answerForm" class="row" style="margin:0">
+        <input id="answer" maxlength="40" autocomplete="off" placeholder="Twoja odpowiedź…">
+        <button>OK</button>
+      </form>
+      <p class="err" id="ansErr"></p>
+    </div>
+    <div class="card used" id="used"></div>
+    <div class="card log" id="log"></div>
+  </section>
+
+  <dialog id="how">
+    <h2>Jak grać?</h2>
+    <ul>
+      <li>Odpowiedz na hasło, zanim ziemniak wybuchnie w twoich rękach.</li>
+      <li>Dobra odpowiedź przekazuje ziemniaka dalej. Czas wybuchu jest ukryty.</li>
+      <li>Rzadsze odpowiedzi szybciej napełniają pasek – pełny pasek to dodatkowe serce.</li>
+      <li>W jednej rundzie odpowiedzi nie mogą się powtarzać.</li>
+      <li>Wygrywa ostatni gracz z sercem.</li>
+    </ul>
+    <form method="dialog"><button>Rozumiem</button></form>
+  </dialog>
+</main>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" integrity="sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR" crossorigin="anonymous"></script>
+<script src="game.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const PREFIX = 'goracy-ziemniak-pl-';
+const cleanCode = s => String(s).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+const fromUrl = new URLSearchParams(location.search).get('pokoj');
+$('code').value = fromUrl ? cleanCode(fromUrl) : Math.random().toString(36).slice(2, 6).toUpperCase();
+try { $('name').value = localStorage.getItem('imie') || ''; } catch {}
+$('howBtn').onclick = e => { e.preventDefault(); $('how').showModal(); };
+
+let link, me, peer;  // link.send(string) – do gospodarza (lub lokalnie, jeśli to my)
+function handle(m) {
+  if (m.t === 'err') { $('joinErr').textContent = m.msg; peer && peer.destroy(); return; }
+  if (m.t === 'bad') { $('ansErr').textContent = '✗ ' + m.why; $('answer').classList.add('shake'); setTimeout(() => $('answer').classList.remove('shake'), 500); return; }
+  if (m.t === 'state') render(m);
+}
+function lost(msg) { $('joinErr').textContent = msg; show(false); me = null; peer && peer.destroy(); }
+
+async function connect() {
+  const code = cleanCode($('code').value), name = $('name').value.trim();
+  if (!code || !name) return $('joinErr').textContent = 'Podaj kod i imię.';
+  $('joinErr').textContent = 'Łączenie…';
+  // Kto pierwszy zajmie ID pokoju, zostaje gospodarzem; reszta łączy się z nim.
+  peer = new Peer(PREFIX + code);
+  peer.on('open', async () => {
+    const cats = Game.loadCats(await (await fetch('kategorie.json')).json());
+    const room = Game.createRoom(code, cats);
+    const self = { send: s => handle(JSON.parse(s)) };
+    link = { send: s => room.onMsg(self, JSON.parse(s)) };
+    peer.on('connection', c => {
+      c.on('data', d => { try { room.onMsg(c, JSON.parse(d)); } catch (e) { console.error(e); } });
+      c.on('close', () => room.onClose(c));
+    });
+    $('joinErr').textContent = '';
+    link.send(JSON.stringify({ t: 'join', name }));
+  });
+  peer.on('error', e => {
+    if (e.type !== 'unavailable-id') return lost('Błąd połączenia: ' + e.type);
+    peer.destroy();
+    peer = new Peer();
+    peer.on('error', e2 => lost('Błąd połączenia: ' + e2.type));
+    peer.on('open', () => {
+      const c = peer.connect(PREFIX + code, { reliable: true });
+      c.on('open', () => { $('joinErr').textContent = ''; link = c; c.send(JSON.stringify({ t: 'join', name })); });
+      c.on('data', d => handle(JSON.parse(d)));
+      c.on('close', () => { if (me) lost('Gospodarz opuścił pokój.'); });
+    });
+  });
+}
+function show(inRoom) { $('join').classList.toggle('hidden', inRoom); $('room').classList.toggle('hidden', !inRoom); }
+
+$('joinBtn').onclick = () => {
+  try { localStorage.setItem('imie', $('name').value); } catch {}
+  connect();
+};
+$('startBtn').onclick = () => link.send(JSON.stringify({ t: 'start' }));
+$('answerForm').onsubmit = e => {
+  e.preventDefault();
+  link.send(JSON.stringify({ t: 'answer', text: $('answer').value }));
+  $('answer').value = ''; $('ansErr').textContent = '';
+};
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+function render(s) {
+  me = s.you; show(true);
+  history.replaceState(null, '', '?pokoj=' + s.code);
+  $('roomCode').textContent = s.code; $('link').value = location.href;
+  const game = s.state === 'game', myTurn = game && s.holder === me;
+  $('cat').textContent = game ? s.cat : (s.winner ? `🏆 Wygrał(a): ${s.winner}` : 'Czekamy na graczy…');
+  $('table').innerHTML = s.players.map(p => `
+    <div class="seat ${game && p.id === s.holder ? 'hold' : ''} ${game && p.hearts <= 0 ? 'dead' : ''}">
+      <div>${game && p.id === s.holder ? '<span class="potato">🥔</span>' : '🙂'}</div>
+      <b>${esc(p.name)}</b>${p.host ? ' 👑' : ''}${p.id === me ? ' (ty)' : ''}
+      <div>${game ? '❤️'.repeat(Math.max(0, p.hearts)) || '💀' : ''}</div>
+      ${game ? `<div class="bar"><i style="width:${Math.round(p.bar * 100)}%"></i></div>` : ''}
+    </div>`).join('');
+  const host = s.players[0]?.id === me;
+  $('lobbyBox').classList.toggle('hidden', game);
+  $('startBtn').classList.toggle('hidden', !host);
+  $('startBtn').disabled = s.players.length < 2;
+  $('lobbyMsg').textContent = host ? (s.players.length < 2 ? 'Potrzeba co najmniej 2 graczy.' : 'Możesz zaczynać!') : 'Czekamy, aż gospodarz 👑 zacznie grę.';
+  $('answerBox').classList.toggle('hidden', !myTurn);
+  if (myTurn) $('answer').focus();
+  $('used').textContent = game ? 'Użyte: ' + (s.used.join(', ') || '—') : '';
+  $('used').classList.toggle('hidden', !game);
+  $('log').innerHTML = s.log.map(esc).join('<br>');
+}
+</script>
+</body>
+</html>

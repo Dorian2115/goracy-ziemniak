@@ -1,0 +1,1 @@
+{ "name": "goracy-ziemniak", "private": true, "scripts": { "test": "node test.js" } }
