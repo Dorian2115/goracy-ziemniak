@@ -301,13 +301,15 @@ function render(s) {
     const a = Math.PI / 2 + ((i - mine) / n) * Math.PI * 2;
     const x = 50 + Math.cos(a) * 41, y = 50 + Math.sin(a) * 41;
     pos[p.id] = [Math.cos(a), Math.sin(a)];
-    const dead = game && p.hearts <= 0;
+    // stan przychodzi od gospodarza – nie ufamy typom
+    const hearts = Math.max(0, Number(p.hearts) | 0), bar = Math.min(1, Math.max(0, Number(p.bar) || 0));
+    const dead = game && hearts <= 0;
     return `<div class="seat ${game && p.id === s.holder ? 'hold' : ''} ${dead ? 'dead' : ''}" style="left:${x}%;top:${y}%">
       <div class="avatar" style="--c:${COLORS[i % COLORS.length]}">${esc(p.name[0].toUpperCase())}</div>
       <div class="name">${esc(p.name)}${p.host ? ' <span title="Gospodarz">★</span>' : ''}</div>
       ${p.id === me ? '<div class="you">to ty</div>' : ''}
-      ${game ? `<div class="hearts" aria-label="Serca: ${p.hearts}">${'♥'.repeat(Math.max(0, p.hearts)) || 'odpada'}</div>
-      <div class="meter" title="Do dodatkowego serca"><i style="width:${Math.round(p.bar * 100)}%"></i></div>` : ''}
+      ${game ? `<div class="hearts" aria-label="Serca: ${hearts}">${'♥'.repeat(Math.min(hearts, 9)) || 'odpada'}</div>
+      <div class="meter" title="Do dodatkowego serca"><i style="width:${Math.round(bar * 100)}%"></i></div>` : ''}
     </div>`;
   }).join('');
 
